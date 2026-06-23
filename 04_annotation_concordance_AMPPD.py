@@ -26,6 +26,9 @@ import sys
 import random
 import warnings
 from concurrent.futures import ProcessPoolExecutor
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from utils_correlation import *
 
@@ -84,32 +87,45 @@ data2_sub.var['gene_name'] = data2_sub.var.index
 common_genes = data1.var_names.intersection(data2_sub.var_names)
 logging.info(f"Retaining {len(common_genes)} shared genes.")
 
-data1 = pg.read_input(h5ad1)
-annotation_dict = {
-    # Monocytes (APOBEC3A+, CXCL1+)
-    "26": "Monocytes",
-
-    # T cells (CD3G+, CD3D+)
-    "25": "T_cells",
-    "36": "T_cells",
-
-    # Oligodendrocytes (MOG+)
-    "31": "Oligodendrocytes",
-
-    # Astrocytes (GFAP+, AQP4+)
-    "35": "Astrocytes",
-    
-    # B cells (CD79A+)
-    "37": "B_cells",
+# --- Cluster to cell type mapping ---
+# --- Cluster to cell type mapping ---
+cluster_map = {
+    '0':  'Mural/stromal cells',
+    '1':  'Mural/stromal cells',
+    '2':  'Neurons',
+    '3':  'Early neurons',
+    '4':  'Early neurons',
+    '5':  'Astrocytes',
+    '6':  'Progenitors/OPC',
+    '7':  'Endothelial cells',
+    '8':  'Perivascular progenitors',
+    '9':  'Astrocytes',
+    '10': 'Microglia',
 }
 
-# Map — unmatched clusters → Microglia
-adata.obs["cell_type"] = adata.obs["leiden_harmony"].map(annotation_dict)
-adata.obs["cell_type"] = adata.obs["cell_type"].fillna("Microglia").astype("category")
+# --- Curated palette — perceptually distinct, colorblind-friendly ---
+cell_type_palette = {
+    'Mural/stromal cells':    '#E64B35',  # red
+    'Neurons':                 '#4DBBD5',  # cyan
+    'Early neurons':      '#00A087',  # teal
+    # 'Early neurons':         '#3C5488',  # navy
+    'Astrocytes':                         '#FF9900',  # amber
+    'Progenitors/OPC':       '#8491B4',  # slate
+    'Endothelial cells':                  '#91D1C2',  # mint
+    'Perivascular progenitors':           '#B09C85',  # taupe
+    'Immature astroglia':                 '#F7DC6F',  # yellow
+    'Microglia':                          '#7E6148',  # brown
+}
 
 
-
-data2 = pg.read_input(h5ad2)
+# 1. Map labels and fill missing values with the original column
+data1.obs['cell_type'] = (
+    data1.obs['leiden_res0_20']
+    .astype(str)
+    .map(cluster_map)
+    .fillna(data1.obs['leiden_res0_20'].astype(str))
+    .astype('category')
+)
 
 data1.obs['class'] = data1.obs['cell_type']
 
@@ -132,72 +148,7 @@ logging.info(f"Retaining {len(common_genes)} shared genes.")
 data1_common = data1[:, common_genes].copy()
 data2_common = data2_sub[:, common_genes].copy()
 
-# # --- Cluster to cell type mapping ---
-# # cluster_map = {
-# #     '0':  'Mural cells',
-# #     '1':  'Stromal cells',
-# #     '2':  'Excitatory neurons',
-# #     '3':  'Early neurons',
-# #     '4':  'Cycling neural progenitors',
-# #     '5':  'Astrocytes',
-# #     '6':  'Progenitors/OPC',
-# #     '7':  'Endothelial cells',
-# #     '8':  'Perivascular progenitors',
-# #     '9':  'Immature astroglia',
-# #     '10': 'Microglia',
-# # }
-# # Define the broad cell type lineages
-# cell_types = [
-#     'Mural cells',
-#     'Excitatory neurons',
-#     'Astrocytes',
-#     'Progenitors/OPC',
-#     'Endothelial cells',
-#     'Microglia'
-# ]
-# # Highly optimized pandas vectorization for matching
-# valid_cells_mask = data1_common.obs['class'].isin(cell_types)
 
-# # .copy() prevents memory-view fragmentation downstream
-# data1_common = data1_common[valid_cells_mask].copy()
-
-# # --- Cluster to cell type mapping ---
-# # Define the broad cell type lineages
-# cell_types = [
-#     'Mural/stromal cells',
-#     'Neurons',
-#     'Astrocytes',
-#     'Progenitors/OPC',
-#     'Endothelial cells',
-#     'Microglia'
-# ]
-# # Highly optimized pandas vectorization for matching
-# valid_cells_mask = data1_common.obs['class'].isin(cell_types)
-
-# # .copy() prevents memory-view fragmentation downstream
-# data1_common = data1_common[valid_cells_mask].copy()
-
-# # Subset celltypes
-
-sc.pl.embedding(data2_common.to_anndata(),basis = 'X_umap',color= 'class' )
-
-# # Define the broad cell type lineages
-# cell_types = [
-#     "Astro",
-#     "EN",        # Excitatory Neurons
-#     "OPC",
-#     # "Oligo",
-#     "Mural",
-#     "Endo",
-#     "Myeloid"    # Myeloid Immune
-# ]
-# # Highly optimized pandas vectorization for matching
-# valid_cells_mask = data2_common.obs['class'].isin(cell_types)
-
-# # .copy() prevents memory-view fragmentation downstream
-# data2_common_subset = data2_common[valid_cells_mask].copy()
-
-sc.pl.embedding(data2_common.to_anndata(),basis = 'X_umap',color= 'class' )
 
 # # Calculate aggregation
 
@@ -320,29 +271,12 @@ cor_df_ordered = corr_spearman.T
 
 cor_df_ordered
 
-    '0':  'Mural/stromal cells',
-    '1':  'Mural/stromal cells',
-    '2':  'Neurons',
-    '3':  'Early neurons',
-    '4':  'Early neurons',
-    '5':  'Astrocytes',
-    '6':  'Progenitors/OPC',
-    '7':  'Endothelial cells',
-    '8':  'Perivascular progenitors',
-    '9':  'Astrocytes',
-    '10': 'Microglia',
 
 corr_pearson =  pd.read_csv('AMPPD_Pearson_Correlation.csv')
 corr_spearman = pd.read_csv('AMPPD_Spearman_Correlation.csv',index_col='barcodekey')
-cor_df_ordered = corr_spearman.T
 
-corr_spearman
 
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-output_pdf = figure_dir + 'AMPPD_Spearman_Correlation.pdf'
+output_pdf = './figures/AMPPD_Spearman_Correlation.pdf'
 # Reorder rows so matching clusters fall on the diagonal
 # Columns: Astro, EN, Endo, Mural, Myeloid, OPC
 row_order = ['Astro', 'OPC', 'EN', 'Endo', 'Myeloid',  'Mural']
@@ -377,32 +311,4 @@ plt.show()
 fig.savefig(output_pdf, dpi=300)
 plt.close(fig)
 # logging.info("Pipeline step complete.")
-
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-# Reorder rows so matching clusters fall on the diagonal
-# Columns: Astro, EN, Endo, Mural, Myeloid, OPC
-row_order = ['Astro', 'OPC', 'EN', 'Endo', 'Myeloid',  'Mural']
-col_order  = ['Astrocytes', 'Progenitors/OPC','Neurons', 'Endothelial cells', 
-               'Microglia','Mural/stromal cells']
-df = cor_df_ordered.T
-df_ordered = df.loc[row_order, col_order]
-
-fig, ax = plt.subplots(figsize=(5, 6))
-
-sns.heatmap(df_ordered,
-            annot      = False,
-            fmt        = ".2f", 
-            cmap       = "RdBu_r",
-            center     = 0,
-            linewidths = 0.5,
-            linecolor  = "black",
-            ax         = ax)
-
-ax.set_title("Spearman Correlation", fontsize=13)
-ax.set_xlabel("miBRAIN")
-ax.set_ylabel("T.Clarence et.al.")
-plt.tight_layout()
-plt.show()
+df_ordered.T.to_csv('2026_06_AMPPD_Spearman_Correlation_sub.csv')
