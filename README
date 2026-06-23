@@ -1,0 +1,513 @@
+# README — Code Deposit
+
+================================================================================
+MANUSCRIPT
+================================================================================
+
+Title:
+  Cholesterol-mediated Lysosomal Dysfunction in APOE4 Astrocytes Promotes
+  α-Synuclein Pathology in miBrains, a Human iPSC-derived Brain Tissue
+
+Authors:
+  Louise A. Mesentier-Louro*, Camille Goldman*, Sebastian Gaese,
+  Alice Buonfiglioli, Dimitrios Kyriakis, Ashley Harlock, Alain Ndayisaba,
+  Emily R. Sartori, John Fullard, Abigail Uchitelev, Braxton R. Schuldt,
+  Rikki B. Rooklin, Jonathan Barra-Carrasco, Jose Bravo-Cordero,
+  Panos Roussos, Vikram Khurana, Joel W. Blanchard (lead contact)
+  (* equal contribution)
+
+Institutions:
+  Icahn School of Medicine at Mount Sinai, New York, NY, USA
+  Brigham and Women's Hospital / Harvard Medical School, Boston, MA, USA
+  Aligning Science Across Parkinson's (ASAP) Collaborative Research Network
+
+Correspondence: joel.blanchard@mssm.edu
+
+Computational analysis:
+  Dimitrios Kyriakis — kyriakds@gmail.com
+
+Keywords:
+  α-synuclein; iPSC-derived brain model; Lewy Body Dementia; Alzheimer's
+  Disease; Astrocytes; APOE4; Lysosomal dysfunction; Cholesterol metabolism;
+  Neurodegeneration; miBrain
+
+================================================================================
+OVERVIEW
+================================================================================
+
+This deposit contains all computational code used to process and analyse
+single-nucleus RNA-sequencing (snRNA-seq) data from iPSC-derived miniature
+brain organoids (miBrains) carrying the A53T alpha-synuclein mutation under
+two APOE backgrounds (E3 and E4), compared to isogenic wild-type controls.
+
+The study developed a 3D iPSC-based model integrating neurons, glia, myelin,
+and cerebrovascular cells into a functional human brain tissue (miBrain).
+snRNA-seq of miBrains confirmed the presence of diverse cell populations and
+revealed cell-type-specific transcriptional responses to synuclein pathology,
+including neuronal apoptotic/synaptic programs and astrocyte signatures of
+lipid dysregulation and reactivity. APOE4 miBrains showed increased
+pathogenic phosphorylation and aggregation of α-synuclein, driven by
+cholesterol accumulation-induced lysosomal dysfunction in APOE4 astrocytes.
+
+Interactive data exploration:
+  UCSC Cell Browser: https://cells-test.gi.ucsc.edu/?ds=mibrain
+
+A person external to the study team can use this code, together with the
+deposited raw and processed datasets, to fully reproduce every result,
+figure panel, and statistical table reported in the manuscript.
+
+
+================================================================================
+SYSTEM REQUIREMENTS
+================================================================================
+
+Hardware
+--------
+Steps 01–02 (Cell Ranger, preprocessing) were executed on a high-performance
+computing (HPC) cluster (Mount Sinai Minerva; SLURM scheduler) with access
+to ≥64 GB RAM per node and NVIDIA GPU nodes (optional, for Cell Ranger).
+Steps 03–06 can be run on a workstation with ≥32 GB RAM.
+
+Software — Python environment (steps 03–04)
+--------------------------------------------
+  Python          3.10+
+  pegasus         1.9+       (pegasuspy; pip install pegasuspy)
+  pegasusio       0.9+
+  scanpy          1.9+
+  anndata         0.9+
+  numpy           1.24+
+  pandas          2.0+
+  scipy           1.11+
+  seaborn         0.13+
+  matplotlib      3.7+
+  session_info    1.0+
+  adjustText      0.8+
+
+Install in one command:
+  pip install pegasuspy scanpy anndata numpy pandas scipy seaborn matplotlib session_info adjustText
+
+  pge (Pegasus Extras) — internal CommonMind/ISMMS package; not on PyPI.
+      Provides: pb_agg_by_cluster, pearson_corr, spearman_corr, scanpy_hvf_h5ad,
+      qc_boundary, ondisk_subset, read_everything_but_X, pge.save.
+      Contact the corresponding author for access. See UTILITY MODULES section
+      for guidance on replacing these calls if pge is unavailable.
+
+Software — R environment (steps 05–06)
+---------------------------------------
+  R               4.3+
+  Bioconductor    3.18+
+  dreamlet        1.9+       (bioc: dreamlet)
+  variancePartition           (bioc: variancePartition)
+  zenith                      (bioc: zenith)
+  crumblr                     (bioc: crumblr)
+  zellkonverter               (bioc: zellkonverter)
+  SingleCellExperiment        (bioc: SingleCellExperiment)
+  BiocParallel                (bioc: BiocParallel)
+  Seurat          4.x / 5.x  (CRAN: Seurat)
+  clusterProfiler 4.x        (bioc: clusterProfiler)
+  enrichplot                  (bioc: enrichplot)
+  fgsea                       (bioc: fgsea)
+  org.Hs.eg.db                (bioc: org.Hs.eg.db)
+  GOSemSim                    (bioc: GOSemSim)
+  presto                      (GitHub: immunogenomics/presto)
+  dittoSeq                    (bioc: dittoSeq)
+  ggplot2, tidyverse, cowplot, ggrepel, aplot, ggtree, qvalue, dplyr
+
+Install Bioconductor packages:
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+  BiocManager::install(c("dreamlet","variancePartition","zenith","crumblr",
+                         "zellkonverter","SingleCellExperiment","BiocParallel",
+                         "clusterProfiler","enrichplot","fgsea","org.Hs.eg.db",
+                         "GOSemSim","dittoSeq","presto"))
+
+Software — genome alignment (step 01)
+--------------------------------------
+  Cell Ranger     9.0.1      (10x Genomics; https://www.10xgenomics.com/support)
+  Snakemake       7.x+       (pip install snakemake)
+
+Reference genome used: GRCh38-2024-A (Cell Ranger pre-built human reference)
+  Download: https://www.10xgenomics.com/support/software/cell-ranger/downloads
+
+GMT files used for pathway analysis:
+  MSigDB v7.5.1 (KEGG, GO:BP, GO:MF)
+  Download: https://www.gsea-msigdb.org/gsea/downloads.jsp
+
+
+================================================================================
+UTILITY MODULES (imported by notebooks — required)
+================================================================================
+
+utils.py
+--------
+Python module imported by 03_qc_preprocessing_annotation.ipynb via `from utils import *`.
+Contains all core single-cell processing functions used in the preprocessing pipeline.
+
+  read_10x_pegasus(inpath, outpath, sample)
+      Reads a Cell Ranger filtered_feature_bc_matrix.h5 file via Pegasus,
+      attaches sample-level metadata (Sample, Channel, individualID), and
+      writes per-sample .h5ad files.
+
+  add_metadata(input, output, prefix)
+      Merges Ensembl gene metadata (gene_type, Ensembl ID, chromosome) into
+      adata.var from a local CSV (Human Ensembl metadata) and MitoCarta 3.0.
+      Computes n_counts and n_features per cell.
+
+  qc(input, output, prefix, args_mad_k=4, args_pct_mito=5, args_min_n_cells=50)
+      Full QC pipeline: identifies robust genes (≥0.05% cells), flags mito/ribo/
+      protein-coding/MitoCarta genes, applies MAD-based thresholds on nUMI and
+      nGene (k=4 MADs), filters by percent_mito, and removes samples with fewer
+      than args_min_n_cells cells. Saves QC diagnostic plots (histograms, scatter).
+
+  log1p_norm(input, output)
+      Shifted log1p normalisation (scanpy normalize_total → log1p). Stores raw
+      counts in adata.layers["counts"] before transformation.
+
+  sig_score(input, output)
+      Computes Pegasus signature scores: cell cycle (G1/S, G2/M, cycle_diff),
+      mitochondrial genes, ribosomal genes, and apoptosis. Used to regress out
+      technical variation in PCA.
+
+  run_global_clustering_umap(input_h5ad, output_h5ad, batch_key, ...)
+      End-to-end dimensionality reduction pipeline:
+        1. HVG selection (cell_ranger flavour, protein-coding autosomal genes,
+           batch-aware via batch_key, n_top_genes=6000)
+        2. PCA (n_pcs=30) with elbow plot
+        3. Regression of n_counts, percent_mito, cycle_diff
+        4. Harmony batch correction (rep=pca_regressed)
+        5. kNN graph (K=100, L2 distance)
+        6. UMAP (n_neighbors=100)
+        7. Leiden clustering at resolutions 0.10 and 0.20
+      Saves clustered AnnData (.h5ad) and UMAP figure.
+
+  compute_cor(Mydata, agr_name, agr_file, pge_agr_path, cluster)
+      Computes Pearson correlation between pseudobulk profiles of the miBRAIN
+      data and a reference atlas aggregation CSV. Scales both matrices (z-score),
+      maps best-hit annotation and score back to adata.obs, and renders a
+      clustermap. Used for Leiden → cell-type label transfer.
+
+  NOTE: utils.py imports `pge` (Pegasus Extras), a private Python package
+  developed at the CommonMind Consortium / Icahn School of Medicine at Mount
+  Sinai. The pge package provides: pb_agg_by_cluster(), pearson_corr(),
+  spearman_corr(), scanpy_hvf_h5ad(), qc_boundary(), ondisk_subset(),
+  read_everything_but_X(), and pge.save(). This package is not currently on
+  PyPI. Contact the corresponding author for access, or replace these calls
+  with equivalent scanpy/pegasus functions as documented in the inline comments.
+
+
+utils_correlation.py
+---------------------
+Python module imported by 04_annotation_concordance_AMPPD.ipynb
+via `from utils_correlation import *`.
+Contains the full cross-dataset pseudobulk correlation pipeline.
+
+  get_nominal_degs_fast(h5ad_file, cluster_label, p_thresh=0.05, ...)
+      Stratified subsampling (max 500 cells/group) followed by Wilcoxon rank-sum
+      test (scanpy rank_genes_groups). Returns genes significant at nominal p < 0.05
+      (no multiple testing correction). Used as a feature-selection step only —
+      not for reporting significance.
+
+  get_fdr_degs_fast(h5ad_file, cluster_label, p_thresh=0.05, ...)
+      Same as above but uses Benjamini-Hochberg adjusted p-values (pvals_adj).
+
+  preprocess_for_correlation(df, scale="standard", min_variance_percentile=50)
+      Variance percentile filter (removes bottom 50% by std dev) followed by
+      either robust Z-score (median/MAD × 1.4826) or standard Z-score scaling.
+      Drops zero-variance and NaN/Inf columns. Returns gene-aligned DataFrame
+      ready for correlation.
+
+  plot_correlation(final_corr_df, method, prefix, ...)
+      Hierarchically clustered heatmap (seaborn clustermap, correlation metric,
+      average linkage) with auto-scaled colorbar (diverging for mixed-sign data,
+      sequential otherwise). Saves both PNG and PDF.
+
+  correlation_qc_report(spearman_df, pearson_df, ...)
+      Prints a structured QC report: DEG counts, correlation distribution
+      statistics (mean, std, fraction > 0.5, > 0.7, < 0), and best-match per
+      cluster with discriminability delta. Saves a histogram figure.
+
+  correlation_between_h5ads(h5ad1, h5ad2, group_by1, group_by2, ...)
+      Master function implementing the full cross-dataset concordance pipeline:
+        1. Pseudobulk aggregation of both datasets (log1p pseudobulk means)
+        2. DEG-based feature selection (nominal or FDR; union or intersection)
+        3. Variance filtering and scaling
+        4. Spearman correlation (unscaled pseudobulk, rank-based)
+        5. Pearson correlation (robust Z-scored pseudobulk)
+        6. Visualisation and QC report
+      Returns (spearman_df, pearson_df).
+
+  NOTE: utils_correlation.py also imports `pge` for pb_agg_by_cluster(),
+  pearson_corr(), and spearman_corr(). See note above regarding pge access.
+  Also requires: adjustText (pip install adjustText).
+
+
+================================================================================
+EXECUTION ORDER
+================================================================================
+
+All scripts are prefixed with a two-digit step number indicating execution
+order. Run them sequentially. Each step consumes outputs from the previous one.
+
+  config.yaml                              — shared configuration (paths, params)
+  utils.py                                 — utility functions (imported by step 03)
+  utils_correlation.py                     — correlation utilities (imported by step 04)
+  01_cellranger_count.smk                  — FASTQ → gene × cell count matrices
+  02_cellranger_annotate.smk               — automated cell annotation (10x Cloud)
+  03_qc_preprocessing_annotation.py       — QC, normalisation, clustering, annotation
+  04_annotation_concordance_AMPPD.py      — cross-dataset annotation concordance
+  05_pseudobulk_de_dreamlet.R             — pseudobulk differential expression + fgsea
+  06_gsea_clusterProfiler.R               — targeted GSEA with custom gene sets (GO/KEGG)
+
+To run the Snakemake steps (on an HPC with SLURM):
+  snakemake -s 01_cellranger_count.smk     --configfile config.yaml --cores 8
+  snakemake -s 02_cellranger_annotate.smk  --configfile config.yaml --cores 8
+
+Jupyter notebooks (.ipynb) can be executed interactively or via:
+  jupyter nbconvert --to notebook --execute <notebook>.ipynb
+
+R notebooks (steps 05–06) use an R kernel in Jupyter. Alternatively, extract
+the R cells and run as standard .R scripts in an R session.
+
+
+================================================================================
+SCRIPT-TO-RESULT MAPPING
+================================================================================
+
+This table identifies which script produces each result in the manuscript.
+"Figure X" refers to figure panels in the published article.
+
+  Script                                   Outputs / Figure Panels
+  ─────────────────────────────────────────────────────────────────────────────
+  01_cellranger_count.smk                  Raw count matrices (.h5); deposited
+                                           as primary data in data repository.
+
+  02_cellranger_annotate.smk               Per-sample automated cell type
+                                           annotation CSVs (cell_types.csv).
+
+  03_qc_preprocessing_annotation.py       - QC metrics per sample (nCount_RNA,
+                                             percent_mito, doublet rate)
+                                           - UMAP of all cells coloured by
+                                             cell type (Figure: UMAP panel)
+                                           - Cell type composition barplots
+                                             per genotype (Figure: composition)
+                                           - Pearson correlation matrix across
+                                             Leiden clusters vs reference atlases
+                                           - Output: 2026_New_Annot1.h5ad
+                                             (annotated, QC-filtered AnnData)
+
+  04_annotation_concordance_AMPPD.py      - Pseudobulk Pearson & Spearman
+                                             correlation heatmaps: miBRAIN vs
+                                             AMP-PD/PPMI postmortem brain
+                                             (Figure: annotation concordance)
+                                           - Output CSVs:
+                                             AMPPD_Pearson_Correlation.csv
+                                             AMPPD_Spearman_Correlation.csv
+
+  05_pseudobulk_de_dreamlet.R             - Variance partition plot per cell type
+                                           - Voom mean-variance trend plots
+                                           - Differential expression results for
+                                             all contrasts (dreamlet 1.9):
+                                               E3 vs Control
+                                               E4 vs Control
+                                               E4 vs E3
+                                               A53T (pooled) vs Control
+                                           - DEG summary tables:
+                                               Summary_DEGs_E3vsCntrl.csv
+                                               Summary_DEGs_E4vsCntrl.csv
+                                               Summary_DEGs_E4vsE3.csv
+                                           - Volcano plots per cell type per
+                                             contrast (Figure: volcano panels)
+                                           - Cell type specificity heatmap
+                                             (Figure: specificity heatmap)
+                                           - fgsea pathway enrichment (KEGG,
+                                             GO:BP, GO:MF) per contrast
+                                             (Figure: pathway bubble plots)
+                                           - Output CSV:
+                                               E3vsCntrl_Neurons_GOBP_Enrichment.csv
+                                           - Saved R objects:
+                                               miBRAIN_CLASS_cova_Diff.rds
+                                               miBRAIN_dreamlet_degs_all_clusters.rds
+                                               markers_raw.rds
+                                               markers_clean.rds
+
+  06_gsea_clusterProfiler.R               - Targeted GSEA (gseGO) for curated
+                                             GO term sets in Neurons and
+                                             Astrocytes (Figure: GSEA enrichment
+                                             plots, 3-panel per pathway)
+                                           - Pathways queried: proteostasis /
+                                             autophagy, ubiquitin-proteasome,
+                                             ER stress, synaptic vesicle cycle,
+                                             postsynaptic organisation, lipid
+                                             metabolism, endosomal-lysosomal
+                                             trafficking, reactive astrocyte
+                                             markers (A1/A2)
+
+
+================================================================================
+DATA INPUTS AND OUTPUTS
+================================================================================
+
+Complete File Listing
+---------------------
+  config.yaml                              — pipeline parameters and paths
+  utils.py                                 — Python utility module (preprocessing)
+  utils_correlation.py                     — Python utility module (correlation)
+  01_cellranger_count.smk                  — Snakemake: FASTQ → count matrices
+  02_cellranger_annotate.smk               — Snakemake: automated annotation
+  03_qc_preprocessing_annotation.py       — Python: QC, clustering, annotation
+  04_annotation_concordance_AMPPD.py      — Python: cross-dataset correlation
+  05_pseudobulk_de_dreamlet.R             — R: pseudobulk DE + fgsea
+  06_gsea_clusterProfiler.R               — R: targeted GSEA
+  README                                   — this file
+
+Inputs
+------
+Raw FASTQ files:
+  Six samples — Blanchard-wt-snRNAseq-{a,b}, Blanchard-A53T-E3-snRNAseq-{a,b},
+  Blanchard-A53T-E4-snRNAseq-{a,b} — are deposited under the dataset DOI
+  associated with this manuscript.
+
+Reference datasets used for annotation concordance (step 04):
+  - AMP-PD / PPMI postmortem brain snRNA-seq
+    (FreshMG freeze 3; T. Clarence et al.)
+  - AMPPD_freeze2_7_cx_rareMut pseudobulk aggregations
+
+GMT files (step 05):
+  MSigDB v7.5.1 — c2.cp.kegg.v7.5.1.symbols.gmt
+                  c5.go.bp.v7.5.1.symbols.gmt
+                  c5.go.mf.v7.5.1.symbols.gmt
+
+Key Intermediate Files
+----------------------
+  2026_New.h5ad                      — concatenated raw AnnData (post Cell Ranger)
+  2026_New_Annot1.h5ad               — final annotated AnnData (step 03 output)
+  miBRAIN_CLASS_cova_Diff.rds        — dreamlet model fit object (step 05 output)
+  miBRAIN_dreamlet_degs_all_clusters.rds — all DEGs (step 05 output)
+
+Final tabular outputs
+---------------------
+  Summary_DEGs_E3vsCntrl.csv
+  Summary_DEGs_E4vsCntrl.csv
+  Summary_DEGs_E4vsE3.csv
+  E3vsCntrl_Neurons_GOBP_Enrichment.csv
+  AMPPD_Pearson_Correlation.csv
+  AMPPD_Spearman_Correlation.csv
+  Number_of_cells_per_dx_ct
+  Number_of_cells_per_sample_ct
+  Metadata.csv
+
+
+================================================================================
+CONFIGURATION
+================================================================================
+
+All file paths, sample identifiers, and analysis parameters for steps 01–02
+are centralised in config.yaml. Before executing the Snakemake rules, update
+the following fields to match your local environment:
+
+  cellranger_count.REFERENCE    — path to GRCh38-2024-A reference directory
+  cellranger_count.FASTQ_PATH   — path to raw FASTQ files
+  cellranger_count.output_path  — desired output directory
+
+Python scripts (steps 03–04) contain HPC-specific absolute paths at the top
+of each notebook. Search for '/sc/arion/' and replace with your local paths
+before executing.
+
+R scripts (steps 05–06) contain a setwd() call at the top of each notebook.
+Update to your working directory. GMT file paths must also be updated.
+
+
+================================================================================
+REPRODUCIBILITY NOTES
+================================================================================
+
+- Session information (package versions) is printed at the start of each
+  notebook via session_info.show() (Python) and sessionInfo() (R).
+- Random seeds are fixed: Python seed = 20210224; R set.seed(42) and
+  set.seed(20210224) in relevant cells.
+- Parallel processing uses BiocParallel::SnowParam() with worker counts
+  specified per cell (6–12 workers). Adjust to available cores.
+- Cell Ranger 9.0.1 automated cell annotation requires a 10x Genomics Cloud
+  token (--tenx-cloud-token-path). A valid account is needed for step 02.
+  This step is optional; manual annotation is performed in step 03.
+
+
+================================================================================
+LICENSE
+================================================================================
+
+All code in this deposit is released under the MIT License.
+
+Copyright (c) 2026 Dimitrios Kyriakis, Blanchard Laboratory
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+================================================================================
+INTERACTIVE DATA EXPLORATION
+================================================================================
+
+Processed single-nucleus RNA-seq data from this study are publicly available
+for interactive exploration via the UCSC Cell Browser:
+
+  https://cells-test.gi.ucsc.edu/?ds=mibrain
+
+The Cell Browser displays UMAP embeddings, gene expression, and cell type
+annotations described in the manuscript.
+
+
+================================================================================
+CONTACT
+================================================================================
+
+Computational analysis — code questions:
+  Dimitrios Kyriakis
+  Email: kyriakds@gmail.com
+
+Correspondence (lead contact):
+  Joel W. Blanchard
+  Email: joel.blanchard@mssm.edu
+
+For issues with Cell Ranger, consult 10x Genomics support:
+  https://www.10xgenomics.com/support
+
+For issues with dreamlet, file a GitHub issue:
+  https://github.com/DiseaseNeuroGenomics/dreamlet
+
+
+================================================================================
+SUGGESTED CITATION AND AVAILABILITY STATEMENTS
+================================================================================
+
+If you use this code, please cite the associated manuscript (DOI to be added
+upon publication) and the Zenodo code deposit (DOI to be added upon upload).
+
+Recommended Code Availability Statement (ASAP boilerplate):
+  "All original code used for quality control, preprocessing, pseudobulk
+  differential expression, and gene set enrichment analysis of snRNA-seq data
+  is available at GitHub [URL] and has been deposited in Zenodo [DOI, URL]."
+
+Recommended Data Availability Statement (ASAP boilerplate):
+  "The data, code, protocols, and key lab materials used and generated in this
+  study are listed in a Key Resource Table alongside their persistent
+  identifiers at [Table number or Zenodo DOI]."
+
+Interactive data:
+  "Processed snRNA-seq data are available for interactive exploration at the
+  UCSC Cell Browser: https://cells-test.gi.ucsc.edu/?ds=mibrain"
