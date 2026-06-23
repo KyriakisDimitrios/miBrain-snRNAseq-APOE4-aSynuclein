@@ -6742,72 +6742,7 @@ pheatmap(
   cluster_rows = FALSE, cluster_cols = FALSE, angle_col = 45
 )
 
-# # Both Nominal
 
-# library(dplyr)
-# library(tidyr)
-# library(tibble)
-# library(pheatmap)
-
-# # 1. Background: Genes physically present in both dataframes
-# all_ids_org <- unique(organoid_df$ID)
-# all_ids_tiss <- unique(tissue_df$ID)
-# common_background <- intersect(all_ids_org, all_ids_tiss)
-
-# # 2. Genes of Interest: Union of significant genes (Nominal P < 0.05)
-# sig_ids_org <- organoid_df$ID[organoid_df$P.Value < 0.05]
-# sig_ids_tiss <- tissue_df$ID[tissue_df$P.Value < 0.05]
-# union_sig <- union(sig_ids_org, sig_ids_tiss)
-
-# # 3. Final Gene Set: Significant in at least one, but measured in both
-# final_features <- intersect(union_sig, common_background)
-
-
-# # 4. Matrix Generation (Using actual logFC values for the final feature set)
-# # We don't fill with 0 anymore; we keep the measured logFC
-# prep_matrix <- function(df, target_genes) {
-#   df %>%
-#     as.data.frame() %>%
-#     dplyr::filter(ID %in% target_genes) %>%
-#     dplyr::group_by(assay, ID) %>%
-#     dplyr::summarize(logFC = mean(logFC, na.rm = TRUE), .groups = "drop") %>%
-#     tidyr::pivot_wider(names_from = assay, values_from = logFC) %>%
-#     tibble::column_to_rownames("ID")
-# }
-
-# mat_org <- prep_matrix(organoid_df, final_features)
-# mat_tiss <- prep_matrix(tissue_df, final_features)
-
-# # 5. Ensure row alignment (only keep genes that successfully pivoted in both)
-# # This handles any edge cases where a gene might have NAs in one dataset
-# final_rows <- intersect(rownames(mat_org), rownames(mat_tiss))
-# mat_org_final <- mat_org[final_rows, , drop = FALSE]
-# mat_tiss_final <- mat_tiss[final_rows, , drop = FALSE]
-
-# # 6. Correlation
-# # 'use = "pairwise.complete.obs"' handles any remaining NAs safely
-# cor_matrix <- cor(mat_org_final, mat_tiss_final, 
-#                   method = "spearman", 
-#                   use = "pairwise.complete.obs")
-
-
-# # 1. Define the color palette
-# my_color <- colorRampPalette(c("#4575b4", "white", "#d73027"))(100)
-
-# # 2. Define breaks that are forced to be symmetric around 0
-# # We take the maximum absolute value to ensure 0 is the exact center
-# max_abs <- max(abs(cor_matrix), na.rm = TRUE)
-# my_breaks <- seq(-max_abs, max_abs, length.out = 101)
-
-# # 3. Plot
-# pheatmap::pheatmap(
-#   cor_matrix,
-#   color = my_color,
-#   breaks = my_breaks,  # This line is what makes 0 = white
-#   display_numbers = TRUE,
-#   cluster_rows = TRUE,
-#   cluster_cols = TRUE
-# )
 
 library(dplyr)
 library(tidyr)
@@ -6818,10 +6753,6 @@ log_info <- function(msg) {
   cat(sprintf("[%s] INFO: %s\n", Sys.time(), msg), file = stderr())
 }
 
-library(dplyr)
-library(tidyr)
-library(tibble)
-library(pheatmap)
 
 # 1. Background: Genes physically present in both dataframes
 all_ids_org <- unique(organoid_df$ID)
