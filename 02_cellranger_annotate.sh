@@ -61,12 +61,12 @@ done
 # Samples
 # ---------------------------------------------------------------------------
 SAMPLES=(
-    "Blanchard-wt-snRNAseq-a"
-    "Blanchard-wt-snRNAseq-b"
-    "Blanchard-A53T-E3-snRNAseq-a"
-    "Blanchard-A53T-E3-snRNAseq-b"
-    "Blanchard-A53T-E4-snRNAseq-a"
-    "Blanchard-A53T-E4-snRNAseq-b"
+    "wt-snRNAseq-a"
+    "wt-snRNAseq-b"
+    "A53T-E3-snRNAseq-a"
+    "A53T-E3-snRNAseq-b"
+    "A53T-E4-snRNAseq-a"
+    "A53T-E4-snRNAseq-b"
 )
 
 # ---------------------------------------------------------------------------
