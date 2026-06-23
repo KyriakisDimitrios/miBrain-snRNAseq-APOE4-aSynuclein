@@ -27,9 +27,9 @@
 #   --mem        RAM in GB per sample   [default: 64]
 #
 # Samples processed (6 total — 2 replicates × 3 genotypes):
-#   Blanchard-wt-snRNAseq-{a,b}         isogenic wild-type controls
-#   Blanchard-A53T-E3-snRNAseq-{a,b}    A53T mutation, APOE-E3 background
-#   Blanchard-A53T-E4-snRNAseq-{a,b}    A53T mutation, APOE-E4 background
+#   wt-snRNAseq-{a,b}         isogenic wild-type controls
+#   A53T-E3-snRNAseq-{a,b}    A53T mutation, APOE-E3 background
+#   A53T-E4-snRNAseq-{a,b}    A53T mutation, APOE-E4 background
 #
 # Output per sample:
 #   <outdir>/<sample_id>/outs/filtered_feature_bc_matrix.h5
